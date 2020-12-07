@@ -4,6 +4,7 @@
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Globalization;
 using System.Linq;
 using Benchmark.Serializers;
 using BenchmarkDotNet.Columns;
@@ -16,6 +17,7 @@ using BenchmarkDotNet.Jobs;
 using BenchmarkDotNet.Order;
 using BenchmarkDotNet.Reports;
 using BenchmarkDotNet.Running;
+using Perfolizer.Horology;
 
 namespace Benchmark
 {
@@ -24,13 +26,22 @@ namespace Benchmark
         public BenchmarkConfig()
         {
             // run quickly:)
-            Job baseConfig = Job.ShortRun.WithIterationCount(1).WithWarmupCount(1);
+            Job baseConfig = Job.ShortRun
+                .WithIterationCount(1)
+                .WithWarmupCount(1);
 
-            // Add(baseConfig.With(Runtime.Clr).With(Jit.RyuJit).With(Platform.X64));
+            Job serverConfig = Job.ShortRun
+                .WithIterationCount(1)
+                .WithWarmupCount(1)
+                .WithGcServer(true)
+                .WithGcConcurrent(true);
+
             this.AddJob(baseConfig.WithRuntime(CoreRuntime.Core31).WithJit(Jit.RyuJit).WithPlatform(Platform.X64));
+            this.AddJob(serverConfig.WithRuntime(CoreRuntime.Core31).WithJit(Jit.RyuJit).WithPlatform(Platform.X64));
 
             this.AddExporter(MarkdownExporter.GitHub);
-            this.AddExporter(CsvExporter.Default);
+            var processableStyle = new SummaryStyle(CultureInfo.InvariantCulture, false, SizeUnit.KB, TimeUnit.Microsecond, false, true, 100);
+            this.AddExporter(new CsvExporter(CsvSeparator.Comma, processableStyle));
             this.AddDiagnoser(MemoryDiagnoser.Default);
 
             this.AddColumn(new DataSizeColumn());
